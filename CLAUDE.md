@@ -95,5 +95,7 @@ Isso é o que faz uma recorrente "resetar" a cada dia novo.
 - Server Components para leitura, Server Actions para escrita. Evitar API
   routes REST manuais a menos que eu peça explicitamente.
 - Commits pequenos, um por unidade lógica de mudança, mensagens em português.
+- Nunca rodar `git commit` (nem `git push`) sozinho. Apenas gerar a mensagem
+  de commit e deixar eu rodar o commit.
 - Antes de decisões estruturais não especificadas aqui (ex: biblioteca de
   toast, forma exata do modal), perguntar em vez de assumir.
