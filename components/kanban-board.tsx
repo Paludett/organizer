@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import {
   DndContext,
   KeyboardSensor,
@@ -16,8 +15,10 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { moveStatus } from "@/app/actions";
+import { dayTasksKey, fetchDayTasks } from "@/lib/queries";
 import { TaskCard, type Task } from "@/components/task-card";
 
 const columns = [
@@ -62,8 +63,36 @@ function Column({
 }
 
 export function KanbanBoard({ tasks: initialTasks, date }: { tasks: Task[]; date: string }) {
-  const [tasks, setTasks] = useState(initialTasks);
-  useEffect(() => setTasks(initialTasks), [initialTasks]);
+  const queryClient = useQueryClient();
+  const queryKey = dayTasksKey(date);
+
+  const { data: tasks = [] } = useQuery({
+    queryKey,
+    queryFn: () => fetchDayTasks(date),
+    initialData: initialTasks,
+  });
+
+  const moveMutation = useMutation({
+    mutationFn: ({ taskId, newStatus }: { taskId: string; newStatus: Task["status"] }) =>
+      moveStatus(taskId, date, newStatus),
+    onMutate: async ({ taskId, newStatus }) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previousTasks = queryClient.getQueryData<Task[]>(queryKey);
+      queryClient.setQueryData<Task[]>(queryKey, (old) =>
+        (old ?? []).map((t) => (t.id === taskId ? { ...t, status: newStatus } : t)),
+      );
+      return { previousTasks };
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.previousTasks) {
+        queryClient.setQueryData(queryKey, context.previousTasks);
+      }
+      toast.error("Não foi possível mover a tarefa");
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey });
+    },
+  });
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -83,15 +112,7 @@ export function KanbanBoard({ tasks: initialTasks, date }: { tasks: Task[]; date
 
     if (!overStatus || overStatus === activeTask.status) return;
 
-    const previousTasks = tasks;
-    setTasks((prev) =>
-      prev.map((t) => (t.id === activeTask.id ? { ...t, status: overStatus } : t)),
-    );
-
-    moveStatus(activeTask.id, date, overStatus).catch(() => {
-      setTasks(previousTasks);
-      toast.error("Não foi possível mover a tarefa");
-    });
+    moveMutation.mutate({ taskId: activeTask.id, newStatus: overStatus });
   }
 
   if (tasks.length === 0) {
