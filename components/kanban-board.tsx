@@ -15,11 +15,13 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { moveStatus } from "@/app/actions";
+import { archiveTask, moveStatus, updateTask } from "@/app/actions";
 import { dayTasksKey, fetchDayTasks } from "@/lib/queries";
 import { TaskCard, type Task } from "@/components/task-card";
+import { TaskDetailDrawer } from "@/components/task-detail-drawer";
 
 const columns = [
   { status: "todo", label: "A fazer" },
@@ -31,10 +33,14 @@ function Column({
   status,
   label,
   tasks,
+  onDelete,
+  onOpen,
 }: {
   status: Task["status"];
   label: string;
   tasks: Task[];
+  onDelete: (taskId: string) => void;
+  onOpen: (taskId: string, mode?: "view" | "edit") => void;
 }) {
   const { setNodeRef } = useDroppable({ id: status });
 
@@ -54,7 +60,9 @@ function Column({
           {tasks.length === 0 ? (
             <p className="p-2 text-sm text-muted">Nada por aqui</p>
           ) : (
-            tasks.map((task) => <TaskCard key={task.id} task={task} />)
+            tasks.map((task) => (
+              <TaskCard key={task.id} task={task} onDelete={onDelete} onOpen={onOpen} />
+            ))
           )}
         </SortableContext>
       </div>
@@ -65,6 +73,8 @@ function Column({
 export function KanbanBoard({ tasks: initialTasks, date }: { tasks: Task[]; date: string }) {
   const queryClient = useQueryClient();
   const queryKey = dayTasksKey(date);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [detailMode, setDetailMode] = useState<"view" | "edit">("view");
 
   const { data: tasks = [] } = useQuery({
     queryKey,
@@ -94,8 +104,46 @@ export function KanbanBoard({ tasks: initialTasks, date }: { tasks: Task[]; date
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: (taskId: string) => archiveTask(taskId),
+    onMutate: async (taskId) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previousTasks = queryClient.getQueryData<Task[]>(queryKey);
+      queryClient.setQueryData<Task[]>(queryKey, (old) =>
+        (old ?? []).filter((t) => t.id !== taskId),
+      );
+      return { previousTasks };
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.previousTasks) {
+        queryClient.setQueryData(queryKey, context.previousTasks);
+      }
+      toast.error("Não foi possível excluir a tarefa");
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ taskId, formData }: { taskId: string; formData: FormData }) =>
+      updateTask(taskId, formData),
+    onSuccess: (result) => {
+      if (result?.error) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success("Tarefa atualizada");
+      setSelectedTaskId(null);
+      queryClient.invalidateQueries({ queryKey });
+    },
+    onError: () => {
+      toast.error("Não foi possível atualizar a tarefa");
+    },
+  });
+
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
@@ -115,6 +163,8 @@ export function KanbanBoard({ tasks: initialTasks, date }: { tasks: Task[]; date
     moveMutation.mutate({ taskId: activeTask.id, newStatus: overStatus });
   }
 
+  const selectedTask = tasks.find((t) => t.id === selectedTaskId) ?? null;
+
   if (tasks.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-border p-12 text-center">
@@ -133,9 +183,21 @@ export function KanbanBoard({ tasks: initialTasks, date }: { tasks: Task[]; date
             status={col.status}
             label={col.label}
             tasks={tasks.filter((t) => t.status === col.status)}
+            onDelete={(taskId) => deleteMutation.mutate(taskId)}
+            onOpen={(taskId, mode = "view") => {
+              setSelectedTaskId(taskId);
+              setDetailMode(mode);
+            }}
           />
         ))}
       </div>
+      <TaskDetailDrawer
+        task={selectedTask}
+        initialMode={detailMode}
+        onClose={() => setSelectedTaskId(null)}
+        onSave={(taskId, formData) => updateMutation.mutate({ taskId, formData })}
+        isSaving={updateMutation.isPending}
+      />
     </DndContext>
   );
 }
