@@ -1,8 +1,10 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useRef, useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { createTask } from "@/app/actions";
+import { dayTasksKey } from "@/lib/queries";
 
 const DAYS = [
   { value: 1, label: "Seg" },
@@ -17,11 +19,28 @@ const DAYS = [
 const inputClass =
   "rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary";
 
-export function TaskForm({ today }: { today: string }) {
+export function TaskForm({ today, date }: { today: string; date: string }) {
   const [type, setType] = useState<"scheduled" | "recurring">("scheduled");
   const [selectedDays, setSelectedDays] = useState<number[]>([]);
-  const [isPending, startTransition] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
+  const queryClient = useQueryClient();
+
+  const createMutation = useMutation({
+    mutationFn: createTask,
+    onSuccess: (result) => {
+      if (result?.error) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success("Tarefa criada");
+      formRef.current?.reset();
+      setSelectedDays([]);
+      queryClient.invalidateQueries({ queryKey: dayTasksKey(date) });
+    },
+    onError: () => {
+      toast.error("Não foi possível criar a tarefa");
+    },
+  });
 
   const allSelected = selectedDays.length === DAYS.length;
 
@@ -37,17 +56,7 @@ export function TaskForm({ today }: { today: string }) {
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    startTransition(async () => {
-      const result = await createTask(formData);
-      if (result?.error) {
-        toast.error(result.error);
-        return;
-      }
-      toast.success("Tarefa criada");
-      formRef.current?.reset();
-      setSelectedDays([]);
-    });
+    createMutation.mutate(new FormData(e.currentTarget));
   }
 
   return (
@@ -156,10 +165,10 @@ export function TaskForm({ today }: { today: string }) {
 
       <button
         type="submit"
-        disabled={isPending}
+        disabled={createMutation.isPending}
         className="cursor-pointer rounded-md bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       >
-        {isPending ? "Criando..." : "Criar tarefa"}
+        {createMutation.isPending ? "Criando..." : "Criar tarefa"}
       </button>
     </form>
   );

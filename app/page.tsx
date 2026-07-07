@@ -33,7 +33,7 @@ export default async function Home({
         </Suspense>
       </div>
 
-      <TaskForm today={today} />
+      <TaskForm today={today} date={selectedDate} />
 
       <KanbanBoard tasks={tasks as Task[]} date={selectedDate} />
     </div>
