@@ -8,6 +8,8 @@ export type Task = {
   title: string;
   priority: "baixa" | "media" | "alta" | "urgente";
   status: "todo" | "doing" | "done";
+  type: "recurring" | "scheduled";
+  streak: number;
 };
 
 const priorityStyles: Record<Task["priority"], string> = {
@@ -43,11 +45,18 @@ export function TaskCard({ task }: { task: Task }) {
       className={`group touch-none cursor-grab rounded-lg border border-border bg-card p-3 shadow-sm transition-shadow hover:shadow-md active:cursor-grabbing ${isDragging ? "opacity-50" : ""}`}
     >
       <p className="font-medium text-foreground">{task.title}</p>
-      <span
-        className={`mt-2 inline-block rounded-full px-2 py-0.5 text-xs font-medium ${priorityStyles[task.priority]}`}
-      >
-        {priorityLabels[task.priority]}
-      </span>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <span
+          className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${priorityStyles[task.priority]}`}
+        >
+          {priorityLabels[task.priority]}
+        </span>
+        {task.type === "recurring" && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-orange-50 px-2 py-0.5 text-xs font-medium text-orange-700 dark:bg-orange-950 dark:text-orange-300">
+            🔥 {task.streak}
+          </span>
+        )}
+      </div>
     </div>
   );
 }
