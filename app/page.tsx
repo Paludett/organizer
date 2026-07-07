@@ -37,24 +37,39 @@ export default async function Home({
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-8 p-8">
-      <Suspense fallback={null}>
-        <DateNav date={selectedDate} />
-      </Suspense>
+    <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 p-6 sm:p-8">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <h1 className="text-xl font-semibold text-foreground">Organizer</h1>
+        <Suspense fallback={null}>
+          <DateNav date={selectedDate} />
+        </Suspense>
+      </div>
 
       <TaskForm today={today} />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        {columns.map((col) => (
-          <div key={col.status} className="flex flex-col gap-3">
-            <h2 className="font-semibold">{col.label}</h2>
-            {(tasks as Task[])
-              .filter((t) => t.status === col.status)
-              .map((task) => (
-                <TaskCard key={task.id} task={task} date={selectedDate} />
-              ))}
-          </div>
-        ))}
+        {columns.map((col) => {
+          const colTasks = (tasks as Task[]).filter((t) => t.status === col.status);
+          return (
+            <div key={col.status} className="flex flex-col gap-3">
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm font-semibold text-foreground">{col.label}</h2>
+                <span className="rounded-full bg-border px-2 py-0.5 text-xs font-medium text-muted">
+                  {colTasks.length}
+                </span>
+              </div>
+              <div className="flex flex-col gap-3 rounded-lg border border-dashed border-border p-2 min-h-24">
+                {colTasks.length === 0 ? (
+                  <p className="p-2 text-sm text-muted">Nada por aqui</p>
+                ) : (
+                  colTasks.map((task) => (
+                    <TaskCard key={task.id} task={task} date={selectedDate} />
+                  ))
+                )}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

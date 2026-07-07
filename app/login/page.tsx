@@ -23,39 +23,40 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex flex-1 items-center justify-center">
-      <form
-        onSubmit={handleSubmit}
-        className="flex w-full max-w-sm flex-col gap-4 p-8"
-      >
-        <h1 className="text-xl font-semibold">Entrar</h1>
-        {status === "sent" ? (
-          <p className="text-sm text-zinc-600">
-            Link enviado. Confira seu email.
-          </p>
-        ) : (
-          <>
-            <input
-              type="email"
-              required
-              placeholder="seu@email.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="rounded border border-zinc-300 px-3 py-2"
-            />
-            <button
-              type="submit"
-              disabled={isPending}
-              className="rounded bg-black px-3 py-2 text-white disabled:opacity-50"
-            >
-              {isPending ? "Enviando..." : "Enviar link mágico"}
-            </button>
-            {status === "error" && (
-              <p className="text-sm text-red-600">{errorMsg}</p>
-            )}
-          </>
-        )}
-      </form>
+    <div className="flex flex-1 items-center justify-center p-6">
+      <div className="w-full max-w-sm rounded-lg border border-border bg-card p-8 shadow-sm">
+        <h1 className="text-xl font-semibold text-foreground">Organizer</h1>
+        <p className="mt-1 text-sm text-muted">Entre com seu email para continuar</p>
+
+        <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
+          {status === "sent" ? (
+            <p className="text-sm text-muted">
+              Link enviado. Confira seu email.
+            </p>
+          ) : (
+            <>
+              <input
+                type="email"
+                required
+                placeholder="seu@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              />
+              <button
+                type="submit"
+                disabled={isPending}
+                className="cursor-pointer rounded-md bg-primary px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isPending ? "Enviando..." : "Enviar link mágico"}
+              </button>
+              {status === "error" && (
+                <p className="text-sm text-red-600">{errorMsg}</p>
+              )}
+            </>
+          )}
+        </form>
+      </div>
     </div>
   );
 }

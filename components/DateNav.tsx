@@ -16,31 +16,40 @@ export function DateNav({ date }: { date: string }) {
 
   const current = new Date(`${date}T00:00:00`);
   const today = format(new Date(), "yyyy-MM-dd");
+  const isToday = date === today;
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-2">
       <button
         type="button"
         onClick={() => goTo(format(subDays(current, 1), "yyyy-MM-dd"))}
-        className="rounded border border-zinc-300 px-3 py-1 text-sm"
+        aria-label="Dia anterior"
+        className="cursor-pointer rounded-md border border-border bg-card px-2.5 py-1.5 text-sm text-foreground transition-colors hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       >
-        ← anterior
+        ←
       </button>
       <button
         type="button"
         onClick={() => goTo(today)}
-        className="rounded border border-zinc-300 px-3 py-1 text-sm"
+        className={`cursor-pointer rounded-md border px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+          isToday
+            ? "border-primary bg-primary text-white"
+            : "border-border bg-card text-foreground hover:bg-primary/10 hover:text-primary"
+        }`}
       >
-        hoje
+        Hoje
       </button>
       <button
         type="button"
         onClick={() => goTo(format(addDays(current, 1), "yyyy-MM-dd"))}
-        className="rounded border border-zinc-300 px-3 py-1 text-sm"
+        aria-label="Próximo dia"
+        className="cursor-pointer rounded-md border border-border bg-card px-2.5 py-1.5 text-sm text-foreground transition-colors hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       >
-        próximo →
+        →
       </button>
-      <span className="text-sm text-zinc-500">{date}</span>
+      <span className="ml-1 text-sm text-muted">
+        {format(current, "dd/MM/yyyy")}
+      </span>
     </div>
   );
 }
