@@ -27,17 +27,30 @@ export async function moveStatus(
   revalidatePath("/");
 }
 
-const createTaskSchema = z.object({
-  title: z.string().trim().min(1, "Título obrigatório"),
-  priority: z.enum(["baixa", "media", "alta", "urgente"]),
-  due_date: z.string().min(1, "Data obrigatória"),
-});
+const createTaskSchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("scheduled"),
+    title: z.string().trim().min(1, "Título obrigatório"),
+    priority: z.enum(["baixa", "media", "alta", "urgente"]),
+    due_date: z.string().min(1, "Data obrigatória"),
+  }),
+  z.object({
+    type: z.literal("recurring"),
+    title: z.string().trim().min(1, "Título obrigatório"),
+    priority: z.enum(["baixa", "media", "alta", "urgente"]),
+    recurrence_days: z
+      .array(z.coerce.number().int().min(0).max(6))
+      .min(1, "Selecione ao menos um dia"),
+  }),
+]);
 
 export async function createTask(formData: FormData) {
   const parsed = createTaskSchema.parse({
+    type: formData.get("type"),
     title: formData.get("title"),
     priority: formData.get("priority"),
     due_date: formData.get("due_date"),
+    recurrence_days: formData.getAll("recurrence_days"),
   });
 
   const supabase = await createClient();
@@ -46,13 +59,23 @@ export async function createTask(formData: FormData) {
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Não autenticado");
 
-  const { error } = await supabase.from("tasks").insert({
-    user_id: user.id,
-    title: parsed.title,
-    priority: parsed.priority,
-    type: "scheduled",
-    due_date: parsed.due_date,
-  });
+  const { error } = await supabase.from("tasks").insert(
+    parsed.type === "scheduled"
+      ? {
+          user_id: user.id,
+          title: parsed.title,
+          priority: parsed.priority,
+          type: "scheduled",
+          due_date: parsed.due_date,
+        }
+      : {
+          user_id: user.id,
+          title: parsed.title,
+          priority: parsed.priority,
+          type: "recurring",
+          recurrence_days: parsed.recurrence_days,
+        },
+  );
   if (error) throw new Error(error.message);
 
   revalidatePath("/");
