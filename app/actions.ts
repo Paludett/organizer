@@ -45,38 +45,42 @@ const createTaskSchema = z.discriminatedUnion("type", [
 ]);
 
 export async function createTask(formData: FormData) {
-  const parsed = createTaskSchema.parse({
+  const parsed = createTaskSchema.safeParse({
     type: formData.get("type"),
     title: formData.get("title"),
     priority: formData.get("priority"),
     due_date: formData.get("due_date"),
     recurrence_days: formData.getAll("recurrence_days"),
   });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Dados inválidos" };
+  }
 
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) throw new Error("Não autenticado");
+  if (!user) return { error: "Não autenticado" };
 
   const { error } = await supabase.from("tasks").insert(
-    parsed.type === "scheduled"
+    parsed.data.type === "scheduled"
       ? {
           user_id: user.id,
-          title: parsed.title,
-          priority: parsed.priority,
+          title: parsed.data.title,
+          priority: parsed.data.priority,
           type: "scheduled",
-          due_date: parsed.due_date,
+          due_date: parsed.data.due_date,
         }
       : {
           user_id: user.id,
-          title: parsed.title,
-          priority: parsed.priority,
+          title: parsed.data.title,
+          priority: parsed.data.priority,
           type: "recurring",
-          recurrence_days: parsed.recurrence_days,
+          recurrence_days: parsed.data.recurrence_days,
         },
   );
-  if (error) throw new Error(error.message);
+  if (error) return { error: error.message };
 
   revalidatePath("/");
+  return { error: null };
 }

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState, useTransition } from "react";
+import { toast } from "sonner";
 import { createTask } from "@/app/actions";
 
 const DAYS = [
@@ -19,6 +20,8 @@ const inputClass =
 export function TaskForm({ today }: { today: string }) {
   const [type, setType] = useState<"scheduled" | "recurring">("scheduled");
   const [selectedDays, setSelectedDays] = useState<number[]>([]);
+  const [isPending, startTransition] = useTransition();
+  const formRef = useRef<HTMLFormElement>(null);
 
   const allSelected = selectedDays.length === DAYS.length;
 
@@ -32,9 +35,25 @@ export function TaskForm({ today }: { today: string }) {
     setSelectedDays(allSelected ? [] : DAYS.map((d) => d.value));
   }
 
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    startTransition(async () => {
+      const result = await createTask(formData);
+      if (result?.error) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success("Tarefa criada");
+      formRef.current?.reset();
+      setSelectedDays([]);
+    });
+  }
+
   return (
     <form
-      action={createTask}
+      ref={formRef}
+      onSubmit={handleSubmit}
       className="flex flex-wrap items-end gap-4 rounded-lg border border-border bg-card p-4 shadow-sm"
     >
       <div className="flex flex-col gap-1">
@@ -137,9 +156,10 @@ export function TaskForm({ today }: { today: string }) {
 
       <button
         type="submit"
-        className="cursor-pointer rounded-md bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        disabled={isPending}
+        className="cursor-pointer rounded-md bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       >
-        Criar tarefa
+        {isPending ? "Criando..." : "Criar tarefa"}
       </button>
     </form>
   );

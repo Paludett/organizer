@@ -1,19 +1,13 @@
 "use client";
 
-import { useTransition } from "react";
-import { moveStatus } from "@/app/actions";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
-type Task = {
+export type Task = {
   id: string;
   title: string;
   priority: "baixa" | "media" | "alta" | "urgente";
   status: "todo" | "doing" | "done";
-};
-
-const nextStatusMap: Record<Task["status"], Task["status"] | null> = {
-  todo: "doing",
-  doing: "done",
-  done: null,
 };
 
 const priorityStyles: Record<Task["priority"], string> = {
@@ -30,27 +24,30 @@ const priorityLabels: Record<Task["priority"], string> = {
   urgente: "Urgente",
 };
 
-export function TaskCard({ task, date }: { task: Task; date: string }) {
-  const [isPending, startTransition] = useTransition();
-  const next = nextStatusMap[task.status];
+export function TaskCard({ task }: { task: Task }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: task.id,
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
 
   return (
-    <div className="group rounded-lg border border-border bg-card p-3 shadow-sm transition-shadow hover:shadow-md">
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className={`group touch-none cursor-grab rounded-lg border border-border bg-card p-3 shadow-sm transition-shadow hover:shadow-md active:cursor-grabbing ${isDragging ? "opacity-50" : ""}`}
+    >
       <p className="font-medium text-foreground">{task.title}</p>
       <span
         className={`mt-2 inline-block rounded-full px-2 py-0.5 text-xs font-medium ${priorityStyles[task.priority]}`}
       >
         {priorityLabels[task.priority]}
       </span>
-      {next && (
-        <button
-          disabled={isPending}
-          onClick={() => startTransition(() => moveStatus(task.id, date, next))}
-          className="mt-3 block cursor-pointer text-sm font-medium text-primary transition-colors hover:text-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          avançar →
-        </button>
-      )}
     </div>
   );
 }

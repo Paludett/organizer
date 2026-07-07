@@ -1,22 +1,10 @@
 import { Suspense } from "react";
 import { format } from "date-fns";
 import { createClient } from "@/lib/supabase/server";
-import { TaskCard } from "@/components/task-card";
+import { KanbanBoard } from "@/components/kanban-board";
 import { TaskForm } from "@/components/task-form";
 import { DateNav } from "@/components/DateNav";
-
-type Task = {
-  id: string;
-  title: string;
-  priority: "baixa" | "media" | "alta" | "urgente";
-  status: "todo" | "doing" | "done";
-};
-
-const columns = [
-  { status: "todo", label: "A fazer" },
-  { status: "doing", label: "Em andamento" },
-  { status: "done", label: "Concluído" },
-] as const;
+import type { Task } from "@/components/task-card";
 
 export default async function Home({
   searchParams,
@@ -47,30 +35,7 @@ export default async function Home({
 
       <TaskForm today={today} />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        {columns.map((col) => {
-          const colTasks = (tasks as Task[]).filter((t) => t.status === col.status);
-          return (
-            <div key={col.status} className="flex flex-col gap-3">
-              <div className="flex items-center gap-2">
-                <h2 className="text-sm font-semibold text-foreground">{col.label}</h2>
-                <span className="rounded-full bg-border px-2 py-0.5 text-xs font-medium text-muted">
-                  {colTasks.length}
-                </span>
-              </div>
-              <div className="flex flex-col gap-3 rounded-lg border border-dashed border-border p-2 min-h-24">
-                {colTasks.length === 0 ? (
-                  <p className="p-2 text-sm text-muted">Nada por aqui</p>
-                ) : (
-                  colTasks.map((task) => (
-                    <TaskCard key={task.id} task={task} date={selectedDate} />
-                  ))
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      <KanbanBoard tasks={tasks as Task[]} date={selectedDate} />
     </div>
   );
 }
